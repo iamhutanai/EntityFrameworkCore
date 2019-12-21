@@ -3540,7 +3540,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                 : query.First();
 
             Assert.Equal("ALFKI", result.CustomerID);
-            Assert.Equal(2, result.Orders.First().OrderDetails.Count);
+            Assert.Equal(3, result.Orders.First().OrderDetails.Count);
         }
 
         private static void CheckIsLoaded(

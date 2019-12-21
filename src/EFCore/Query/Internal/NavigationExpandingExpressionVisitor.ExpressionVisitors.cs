@@ -246,11 +246,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
 
                 var outerKeySelector = _navigationExpandingExpressionVisitor.GenerateLambda(
                     outerKey, _source.CurrentParameter);
-                var innerKeySelector = _navigationExpandingExpressionVisitor.GenerateLambda(
-                    _navigationExpandingExpressionVisitor.ExpandNavigationsInLambdaExpression(
-                        innerSource,
-                        Expression.Lambda(innerKey, innerParameter)),
-                    innerSource.CurrentParameter);
+                var innerKeySelector = _navigationExpandingExpressionVisitor.ProcessLambdaExpression(
+                    innerSource, Expression.Lambda(innerKey, innerParameter));
 
                 var resultSelectorOuterParameter = Expression.Parameter(_source.SourceElementType, "o");
                 var resultSelectorInnerParameter = Expression.Parameter(innerSource.SourceElementType, "i");
@@ -366,7 +363,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             {
                 Check.NotNull(methodCallExpression, nameof(methodCallExpression));
 
-                if (methodCallExpression.TryGetEFPropertyArguments(out var _, out var __))
+                if (methodCallExpression.TryGetEFPropertyArguments(out _, out _))
                 {
                     // If it is EF.Property then, it would get converted to a column or throw
                     // so we don't need to expand includes.

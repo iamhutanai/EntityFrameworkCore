@@ -1993,24 +1993,22 @@ namespace Microsoft.EntityFrameworkCore.Query
 
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
-        public virtual async Task SelectMany_mixed(bool async)
+        public virtual Task SelectMany_mixed(bool async)
         {
-            Assert.Equal(
-                CoreStrings.QueryFailed("e1 => string[] { \"a\", \"b\", }", "NavigationExpandingExpressionVisitor"),
-                (await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => AssertQuery(
-                        async,
-                        ss => from e1 in ss.Set<Employee>().OrderBy(e => e.EmployeeID).Take(2)
-                              from s in new[] { "a", "b" }
-                              from c in ss.Set<Customer>().OrderBy(c => c.CustomerID).Take(2)
-                              select new
-                              {
-                                  e1,
-                                  s,
-                                  c
-                              },
-                        e => (e.e1.EmployeeID, e.c.CustomerID),
-                        entryCount: 4))).Message);
+            return AssertTranslationFailed(
+                () => AssertQuery(
+                    async,
+                    ss => from e1 in ss.Set<Employee>().OrderBy(e => e.EmployeeID).Take(2)
+                            from s in new[] { "a", "b" }
+                            from c in ss.Set<Customer>().OrderBy(c => c.CustomerID).Take(2)
+                            select new
+                            {
+                                e1,
+                                s,
+                                c
+                            },
+                    e => (e.e1.EmployeeID, e.c.CustomerID),
+                    entryCount: 4));
         }
 
         [ConditionalTheory]
@@ -2425,41 +2423,26 @@ namespace Microsoft.EntityFrameworkCore.Query
 
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
-        public virtual async Task Default_if_empty_top_level_arg(bool async)
+        public virtual Task Default_if_empty_top_level_arg(bool async)
         {
-            var message = (await Assert.ThrowsAsync<InvalidOperationException>(
+            return AssertTranslationFailed(
                 () => AssertQuery(
                     async,
                     ss => from e in ss.Set<Employee>().Where(c => c.EmployeeID == NonExistentID).DefaultIfEmpty(new Employee())
                           select e,
-                    entryCount: 1))).Message;
+                    entryCount: 1));
 
-            Assert.Equal(
-                CoreStrings.QueryFailed(
-                    @"DbSet<Employee>
-    .Where(c => c.EmployeeID == 4294967295)
-    .DefaultIfEmpty(__p_0)",
-                    "NavigationExpandingExpressionVisitor"),
-                message, ignoreLineEndingDifferences: true);
         }
 
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
-        public virtual async Task Default_if_empty_top_level_arg_followed_by_projecting_constant(bool async)
+        public virtual Task Default_if_empty_top_level_arg_followed_by_projecting_constant(bool async)
         {
-            var message = (await Assert.ThrowsAsync<InvalidOperationException>(
+            return AssertTranslationFailed(
                 () => AssertQueryScalar(
                     async,
                     ss => from e in ss.Set<Employee>().Where(c => c.EmployeeID == NonExistentID).DefaultIfEmpty(new Employee())
-                          select 42))).Message;
-
-            Assert.Equal(
-                CoreStrings.QueryFailed(
-                    @"DbSet<Employee>
-    .Where(c => c.EmployeeID == 4294967295)
-    .DefaultIfEmpty(__p_0)",
-                    "NavigationExpandingExpressionVisitor"),
-                message, ignoreLineEndingDifferences: true);
+                          select 42));
         }
 
         [ConditionalTheory]
@@ -5506,7 +5489,13 @@ namespace Microsoft.EntityFrameworkCore.Query
                     {
                         e.Item.OrderID,
                         ProductIds = e.Item.OrderDetails.Select(od => od.ProductID).ToList()
-                    }));
+                    }),
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.OrderID, a.OrderID);
+                    AssertCollection(e.ProductIds, a.ProductIds, ordered: true, elementAsserter: (ie, ia) => Assert.Equal(ie, ia));
+                });
         }
 
         [ConditionalTheory]
@@ -5524,7 +5513,13 @@ namespace Microsoft.EntityFrameworkCore.Query
                     {
                         e.Item.OrderID,
                         ProductIds = e.Item.OrderDetails.Select(od => od.ProductID).ToList()
-                    }));
+                    }),
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.OrderID, a.OrderID);
+                    AssertCollection(e.ProductIds, a.ProductIds, ordered: true, elementAsserter: (ie, ia) => Assert.Equal(ie, ia));
+                });
         }
 
         [ConditionalTheory]
@@ -5543,7 +5538,13 @@ namespace Microsoft.EntityFrameworkCore.Query
                     {
                         e.Item.OrderID,
                         ProductIds = e.Item.OrderDetails.Select(od => od.ProductID).ToList()
-                    }));
+                    }),
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.OrderID, a.OrderID);
+                    AssertCollection(e.ProductIds, a.ProductIds, ordered: true, elementAsserter: (ie, ia) => Assert.Equal(ie, ia));
+                });
         }
 
         [ConditionalTheory]
@@ -5604,7 +5605,10 @@ namespace Microsoft.EntityFrameworkCore.Query
                         Order = o,
                         o.OrderDetails
                     })
-                    .Skip(5));
+                    .Skip(5),
+                entryCount: 173,
+                assertOrder: true,
+                elementAsserter: (e, a) => { AssertEqual(e.Order, a.Order); AssertCollection(e.OrderDetails, a.OrderDetails); });
         }
 
         [ConditionalTheory]
@@ -5621,7 +5625,10 @@ namespace Microsoft.EntityFrameworkCore.Query
                         Order = o,
                         o.OrderDetails
                     })
-                    .Take(10));
+                    .Take(10),
+                entryCount: 39,
+                assertOrder: true,
+                elementAsserter: (e, a) => { AssertEqual(e.Order, a.Order); AssertCollection(e.OrderDetails, a.OrderDetails); });
         }
 
         [ConditionalTheory]
@@ -5639,7 +5646,10 @@ namespace Microsoft.EntityFrameworkCore.Query
                         o.OrderDetails
                     })
                     .Skip(5)
-                    .Take(10));
+                    .Take(10),
+                entryCount: 39,
+                assertOrder: true,
+                elementAsserter: (e, a) => { AssertEqual(e.Order, a.Order); AssertCollection(e.OrderDetails, a.OrderDetails); });
         }
     }
 }
