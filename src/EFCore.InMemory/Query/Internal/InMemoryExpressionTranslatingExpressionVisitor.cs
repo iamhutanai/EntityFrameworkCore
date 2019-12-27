@@ -653,9 +653,8 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             = typeof(InMemoryExpressionTranslatingExpressionVisitor)
                 .GetTypeInfo().GetDeclaredMethod(nameof(GetParameterValue));
 
-#pragma warning disable IDE0052 // Remove unread private members
+        [UsedImplicitly]
         private static T GetParameterValue<T>(QueryContext queryContext, string parameterName)
-#pragma warning restore IDE0052 // Remove unread private members
             => (T)queryContext.ParameterValues[parameterName];
 
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
