@@ -731,7 +731,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             LambdaExpression elementSelector,
             LambdaExpression resultSelector)
         {
-            var keySelectorBody = ExpandNavigationsInLambdaExpression(source, keySelector);
+            var keySelectorBody = ExpandNavigationsForSource(source, RemapLambdaExpression(source, keySelector));
             // Need to generate lambda after processing element/result selector
             Expression result;
             if (elementSelector != null)
@@ -997,7 +997,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         private NavigationExpansionExpression ProcessSelectMany(
             NavigationExpansionExpression source, LambdaExpression collectionSelector, LambdaExpression resultSelector)
         {
-            var collectionSelectorBody = ExpandNavigationsInLambdaExpression(source, collectionSelector);
+            var collectionSelectorBody = ExpandNavigationsForSource(source, RemapLambdaExpression(source, collectionSelector));
             if (collectionSelectorBody is MaterializeCollectionNavigationExpression materializeCollectionNavigationExpression)
             {
                 collectionSelectorBody = materializeCollectionNavigationExpression.Subquery;
@@ -1377,23 +1377,21 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             return new NavigationExpansionExpression(sourceExpression, currentTree, currentTree, parameterName);
         }
 
-        private Expression ExpandNavigationsInLambdaExpression(NavigationExpansionExpression source, LambdaExpression lambdaExpression)
+        private Expression ExpandNavigationsForSource(NavigationExpansionExpression source, Expression expression)
         {
-            var lambdaBody = ReplacingExpressionVisitor.Replace(
-                lambdaExpression.Parameters[0],
-                source.PendingSelector,
-                lambdaExpression.Body);
+            expression = new ExpandingExpressionVisitor(this, source).Visit(expression);
+            expression = _subqueryMemberPushdownExpressionVisitor.Visit(expression);
+            expression = Visit(expression);
+            expression = _pendingSelectorExpandingExpressionVisitor.Visit(expression);
 
-            lambdaBody = new ExpandingExpressionVisitor(this, source).Visit(lambdaBody);
-            lambdaBody = _subqueryMemberPushdownExpressionVisitor.Visit(lambdaBody);
-            lambdaBody = Visit(lambdaBody);
-            lambdaBody = _pendingSelectorExpandingExpressionVisitor.Visit(lambdaBody);
-
-            return lambdaBody;
+            return expression;
         }
 
+        private Expression RemapLambdaExpression(NavigationExpansionExpression source, LambdaExpression lambdaExpression)
+            => ReplacingExpressionVisitor.Replace(lambdaExpression.Parameters[0], source.PendingSelector, lambdaExpression.Body);
+
         private LambdaExpression ProcessLambdaExpression(NavigationExpansionExpression source, LambdaExpression lambdaExpression)
-            => GenerateLambda(ExpandNavigationsInLambdaExpression(source, lambdaExpression), source.CurrentParameter);
+            => GenerateLambda(ExpandNavigationsForSource(source, RemapLambdaExpression(source, lambdaExpression)), source.CurrentParameter);
 
         private static IEnumerable<INavigation> FindNavigations(IEntityType entityType, string navigationName)
         {
