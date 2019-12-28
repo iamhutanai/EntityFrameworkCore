@@ -523,13 +523,12 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 {
                     // firstArgument was not an queryable
                     var visitedArguments = new[] { firstArgument }
-                        .Concat(methodCallExpression.Arguments.Skip(1).Select(Visit))
-                        .ToList();
+                        .Concat(methodCallExpression.Arguments.Skip(1).Select(Visit));
 
                     return ConvertToEnumerable(method, visitedArguments);
                 }
 
-                throw new InvalidOperationException(CoreStrings.QueryFailed(methodCallExpression.Print(), GetType().Name));
+                throw new InvalidOperationException(CoreStrings.TranslationFailed(methodCallExpression.Print()));
             }
 
             if (method.IsGenericMethod
@@ -1245,7 +1244,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 && outerDefaultExpression.Type == innerDefaultExpression.Type;
         }
 
-        private MethodCallExpression ConvertToEnumerable(MethodInfo queryableMethod, List<Expression> arguments)
+        private MethodCallExpression ConvertToEnumerable(MethodInfo queryableMethod, IEnumerable<Expression> arguments)
         {
             var genericTypeArguments = queryableMethod.IsGenericMethod
                 ? queryableMethod.GetGenericArguments()
